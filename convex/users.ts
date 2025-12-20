@@ -1,34 +1,38 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, internalQuery } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
+
+/* ---------------- STORE USER ---------------- */
 
 export const store = mutation({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<Id<"users">> => {
     const identity = await ctx.auth.getUserIdentity();
+
     if (!identity) {
       throw new Error("Called storeUser without authentication present");
     }
 
-    // Check if we've already stored this identity before.
-    // Note: If you don't want to define an index right away, you can use
-    // ctx.db.query("users")
-    //  .filter(q => q.eq(q.field("tokenIdentifier"), identity.tokenIdentifier))
-    //  .unique();
-    const user = await ctx.db
+    const existingUser = await ctx.db
       .query("users")
       .withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
+        q.eq("tokenIdentifier", identity.tokenIdentifier)
       )
       .unique();
-    if (user !== null) {
-      // If we've seen this identity before but the name has changed, patch the value.
-      if (user.name !== identity.name) {
-        await ctx.db.patch(user._id, { name: identity.name });
+
+    // Update existing user
+    if (existingUser) {
+      if (existingUser.name !== identity.name) {
+        await ctx.db.patch(existingUser._id, {
+          name: identity.name ?? existingUser.name,
+          updatedAt: Date.now(),
+        });
       }
-      return user._id;
+      return existingUser._id;
     }
-    // If it's a new identity, create a new `User`.
+
+    // Create new user
     return await ctx.db.insert("users", {
-     email: identity.email ?? "",
+      email: identity.email ?? "",
       tokenIdentifier: identity.tokenIdentifier,
       name: identity.name ?? "Anonymous",
       imageUrl: identity.pictureUrl,
@@ -40,21 +44,28 @@ export const store = mutation({
   },
 });
 
-export const getCurrentUser=query(
-    {
-      handler:async(ctx) =>{
-        const identity=await ctx.auth.getUserIdentity();
-        if(!identity){
-            return null;
-        }
-        const user=await ctx.db.query("users").withIndex("by_token", (q) =>
-        q.eq("tokenIdentifier", identity.tokenIdentifier),
+/* ---------------- INTERNAL GET CURRENT USER ---------------- */
+/* THIS IS THE KEY FIX */
+
+export const getCurrentUser = internalQuery({
+  handler: async (ctx): Promise<Doc<"users"> | null> => {
+    const identity = await ctx.auth.getUserIdentity();
+
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier)
       )
       .unique();
-      if(!user){
-        throw new Error("User Not Found");
-      }
-      return user;
-      }
+
+    if (!user) {
+      throw new Error("Authenticated user not found in database");
     }
-)
+
+    return user;
+  },
+});
