@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import { ConvexClientProvider } from "./ConvexClientProvider";
 import {ClerkProvider} from "@clerk/nextjs"
 import { dark } from "@clerk/themes";
+import { Toaster } from "sonner";
 export const metadata: Metadata = {
   title: "EventHive",
   description: "Discover and create Amazing Events",
@@ -42,6 +43,7 @@ export default function RootLayout({
           </div>
           <div className="relative z-10">{children}</div>
         </main>
+         <Toaster position="top-center" richColors />
         </ConvexClientProvider>
         </ClerkProvider>
         </ThemeProvider>

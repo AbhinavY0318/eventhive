@@ -1,13 +1,10 @@
-import { mutation, internalQuery } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-
-/* ---------------- STORE USER ---------------- */
 
 export const store = mutation({
   args: {},
   handler: async (ctx): Promise<Id<"users">> => {
     const identity = await ctx.auth.getUserIdentity();
-
     if (!identity) {
       throw new Error("Called storeUser without authentication present");
     }
@@ -19,7 +16,6 @@ export const store = mutation({
       )
       .unique();
 
-    // Update existing user
     if (existingUser) {
       if (existingUser.name !== identity.name) {
         await ctx.db.patch(existingUser._id, {
@@ -30,7 +26,6 @@ export const store = mutation({
       return existingUser._id;
     }
 
-    // Create new user
     return await ctx.db.insert("users", {
       email: identity.email ?? "",
       tokenIdentifier: identity.tokenIdentifier,
@@ -44,28 +39,17 @@ export const store = mutation({
   },
 });
 
-/* ---------------- INTERNAL GET CURRENT USER ---------------- */
-/* THIS IS THE KEY FIX */
-
-export const getCurrentUser = internalQuery({
+/* ✅ PUBLIC QUERY (frontend can call this) */
+export const getCurrentUser = query({
   handler: async (ctx): Promise<Doc<"users"> | null> => {
     const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
 
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
+    return await ctx.db
       .query("users")
       .withIndex("by_token", (q) =>
         q.eq("tokenIdentifier", identity.tokenIdentifier)
       )
       .unique();
-
-    if (!user) {
-      throw new Error("Authenticated user not found in database");
-    }
-
-    return user;
   },
 });
