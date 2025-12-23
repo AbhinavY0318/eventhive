@@ -1,46 +1,74 @@
 "use client";
-import { SignedOut, SignInButton,SignUpButton,UserButton,SignedIn } from "@clerk/nextjs";
+
+import {
+  SignedOut,
+  SignInButton,
+  UserButton,
+} from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { Authenticated, Unauthenticated } from "convex/react";
-import {BarLoader} from "react-spinners"
+import { BarLoader } from "react-spinners";
 import { useStoreUser } from "@/hooks/use-store-user";
 import { Building, Plus, Ticket } from "lucide-react";
+import OnboardingModal from "./onboarding-modal";
+import { useOnboarding } from "@/hooks/use-onboarding";
+import SearchLocationBar from "./search-location-bar";
+
 const Header = () => {
-  const {isLoading}=useStoreUser();
+  const { isLoading } = useStoreUser();
+  const { showOnboarding, handleOnboardingComplete, handleOnboardingSkip } =
+    useOnboarding();
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-20 border-b bg-background/80 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        
-        {/* Logo only */}
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/logo.png"
-            alt="EventHive Logo"
-            width={150}
-            height={44}
-            priority
-            className="object-contain"
-          />
-        </Link>
-        <div className="flex items-center">
-           <Unauthenticated>
+    <>
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b bg-background/80 backdrop-blur-xl">
+        {/* MAIN ROW */}
+       <div className="max-w-7xl mx-auto px-6 h-16 grid grid-cols-[auto_1fr_auto] items-center">
+          
+          {/* Logo */}
+          <Link href="/" className="flex items-center shrink-0">
+            <Image
+              src="/logo.png"
+              alt="EventHive Logo"
+              width={150}
+              height={40}
+              priority
+              className="object-contain"
+            />
+          </Link>
+
+          {/* DESKTOP SEARCH BAR */}
+           <div className="hidden md:flex justify-center">
+          <div className="w-full max-w-xl">
+            <SearchLocationBar />
+            </div>
+         </div>
+
+          {/* RIGHT ACTIONS */}
+          <div className="flex items-center gap-2 ml-auto">
+            <Button variant="ghost" size="sm">Pricing</Button>
+
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/explore">Explore</Link>
+            </Button>
+
+            <Unauthenticated>
               <SignInButton mode="modal">
                 <Button size="sm">Sign In</Button>
-                </SignInButton>
-             
+              </SignInButton>
             </Unauthenticated>
-            <Button variant={"ghost"} size="sm">Pricing</Button>
-            <Button variant={"ghost"} size="sm" asChild className="mr-2"><Link href="explore">Explore</Link></Button>
+
             <Authenticated>
-                   <Button size="sm" asChild className="flex gap-2 mr-4">
+              <Button size="sm" asChild className="flex gap-2">
                 <Link href="/create-event">
                   <Plus className="w-4 h-4" />
                   <span className="hidden sm:inline">Create Event</span>
                 </Link>
               </Button>
-              <UserButton >
+
+              <UserButton>
                 <UserButton.MenuItems>
                   <UserButton.Link
                     label="My Tickets"
@@ -54,19 +82,25 @@ const Header = () => {
                   />
                   <UserButton.Action label="manageAccount" />
                 </UserButton.MenuItems>
-              
               </UserButton>
             </Authenticated>
+          </div>
         </div>
-      </div>
-      {/* Bar Loader*/}
-      {isLoading && (
-        <div className="absolute bottom-0 left-0 w-full">
-        <BarLoader width={"100%"} color="blue"/>
-      </div>
-      )}
-      
-    </nav>
+
+        {/* LOADER */}
+        {isLoading && (
+          <div className="absolute bottom-0 left-0 w-full">
+            <BarLoader width="100%" color="blue" />
+          </div>
+        )}
+      </nav>
+
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={handleOnboardingSkip}
+        onComplete={handleOnboardingComplete}
+      />
+    </>
   );
 };
 
